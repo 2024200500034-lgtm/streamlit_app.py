@@ -1,4 +1,54 @@
+import os
+import subprocess
+import sys
+
+# অটোমেটিক লাইব্রেরি ইন্সটল করার হ্যাক
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    import pandas as pd
+    import matplotlib.pyplot as plt
+except ImportError:
+    install('pandas')
+    install('matplotlib')
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
 import streamlit as st
+
+# বাকি অ্যাপ কোড এখান থেকে শুরু
+st.title("🏎️ DC Motor Analysis Dashboard")
+st.write("ম্যাম, এই টুলটি সরাসরি ল্যাব ডাটা থেকে গ্রাফ তৈরি করে।")
+
+# ইনপুট সেকশন
+v_supply = st.number_input("Supply Voltage (V)", value=9.0)
+r_armature = st.number_input("Armature Resistance (Ra)", value=4.0)
+
+# ডাটা এন্ট্রি টেবিল
+st.subheader("⌨️ ডাটা ইনপুট দিন (নিচের টেবিলে ক্লিক করে মান লিখুন)")
+input_data = pd.DataFrame({
+    "Condition": ["No Load", "Small Fan", "Big Fan"],
+    "Current_Ia": [0.20, 0.50, 1.10]
+})
+
+edited_df = st.data_editor(input_data, num_rows="dynamic")
+
+# ক্যালকুলেশন
+if not edited_df.empty:
+    edited_df["Back_EMF_Eb"] = v_supply - (edited_df["Current_Ia"] * r_armature)
+    
+    st.write("### ফলাফল টেবিল:")
+    st.dataframe(edited_df)
+
+    # গ্রাফ তৈরি
+    st.write("### গ্রাফ (Ia vs Eb):")
+    fig, ax = plt.subplots()
+    ax.plot(edited_df["Current_Ia"], edited_df["Back_EMF_Eb"], marker='o', color='red', label='Back EMF')
+    ax.set_xlabel("Armature Current (Ia)")
+    ax.set_ylabel("Back EMF (Eb)")
+    ax.grid(True)
+    st.pyplot(fig)import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
