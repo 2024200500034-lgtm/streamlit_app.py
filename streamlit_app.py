@@ -1,92 +1,54 @@
-import os
-import subprocess
-import sys
 
-# অটোমেটিক লাইব্রেরি ইন্সটল করার হ্যাক
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-try:
-    import pandas as pd
-    import matplotlib.pyplot as plt
-except ImportError:
-    install('pandas')
-    install('matplotlib')
-    import pandas as pd
-    import matplotlib.pyplot as plt
 
 import streamlit as st
-
-# বাকি অ্যাপ কোড এখান থেকে শুরু
-st.title("🏎️ DC Motor Analysis Dashboard")
-st.write("ম্যাম, এই টুলটি সরাসরি ল্যাব ডাটা থেকে গ্রাফ তৈরি করে।")
-
-# ইনপুট সেকশন
-v_supply = st.number_input("Supply Voltage (V)", value=9.0)
-r_armature = st.number_input("Armature Resistance (Ra)", value=4.0)
-
-# ডাটা এন্ট্রি টেবিল
-st.subheader("⌨️ ডাটা ইনপুট দিন (নিচের টেবিলে ক্লিক করে মান লিখুন)")
-input_data = pd.DataFrame({
-    "Condition": ["No Load", "Small Fan", "Big Fan"],
-    "Current_Ia": [0.20, 0.50, 1.10]
-})
-
-edited_df = st.data_editor(input_data, num_rows="dynamic")
-
-# ক্যালকুলেশন
-if not edited_df.empty:
-    edited_df["Back_EMF_Eb"] = v_supply - (edited_df["Current_Ia"] * r_armature)
-    
-    st.write("### ফলাফল টেবিল:")
-    st.dataframe(edited_df)
-
-    # গ্রাফ তৈরি
-    st.write("### গ্রাফ (Ia vs Eb):")
-    fig, ax = plt.subplots()
-    ax.plot(edited_df["Current_Ia"], edited_df["Back_EMF_Eb"], marker='o', color='red', label='Back EMF')
-    ax.set_xlabel("Armature Current (Ia)")
-    ax.set_ylabel("Back EMF (Eb)")
-    ax.grid(True)
-    st.pyplot(fig)import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="DC Motor Analysis Tool", layout="wide")
+# টাইটেল ও বর্ণনা
+st.set_page_config(page_title="Motor Analysis", layout="wide")
+st.title("🏎️ DC Motor Back EMF Live Analyzer")
+st.write("ম্যাম, এই টুলের মাধ্যমে আমরা রিয়েল-টাইমে ল্যাব ডাটা ইনপুট দিয়ে গ্রাফ দেখতে পারি।")
 
-st.title("🏎️ DC Motor Back EMF & Efficiency Live Analyzer")
-st.markdown("ম্যাম, এই টুলটি ব্যবহার করে আমরা ল্যাবের ডাটা সরাসরি অ্যানালাইসিস করতে পারি।")
-
-# Sidebar inputs
-st.sidebar.header("Motor Parameters")
+# ইনপুট প্যারামিটার (বাম পাশের সাইডবারে থাকবে)
+st.sidebar.header("⚙️ Motor Settings")
 v_supply = st.sidebar.number_input("Supply Voltage (V)", value=9.0)
-r_armature = st.sidebar.number_input("Armature Resistance (Ra in Ohms)", value=4.0)
+r_armature = st.sidebar.number_input("Armature Resistance (Ra)", value=4.0)
 
-# Data Table Input
-st.subheader("📊 Enter Lab Readings")
-data = st.data_editor(
-    pd.DataFrame({
-        "Load Condition": ["No Load", "Small Fan", "Big Fan", "Heavy Load"],
-        "Current (Ia in Amps)": [0.2, 0.5, 1.2, 2.0]
-    }),
-    num_rows="dynamic"
-)
+# ডাটা এন্ট্রি সেকশন
+st.subheader("📊 ল্যাব রিডিং এখানে বসান")
+st.info("নিচের টেবিলের 'Current_Ia' কলামের সংখ্যায় ডাবল ক্লিক করে আপনার ডাটা লিখুন এবং এন্টার চাপুন।")
 
-# Calculations
-if not data.empty:
-    df = data.copy()
-    df["Back EMF (Eb)"] = v_supply - (df["Current (Ia in Amps)"] * r_armature)
-    df["Efficiency (%)"] = (df["Back EMF (Eb)"] / v_supply) * 100
+# প্রাথমিক ডাটা ফ্রেম
+df_init = pd.DataFrame({
+    "Condition": ["No Load", "Small Fan", "Big Fan"],
+    "Current_Ia": [0.20, 0.60, 1.20]
+})
 
-    # Display Results
-    st.subheader("✅ Calculated Results")
-    st.write(df)
+# ডাটা এডিটর (এটাই আসল ম্যাজিক)
+edited_df = st.data_editor(df_init, num_rows="dynamic")
 
-    # Graphing
-    st.subheader("📈 Back EMF vs Armature Current Graph")
-    fig, ax = plt.subplots()
-    ax.plot(df["Current (Ia in Amps)"], df["Back EMF (Eb)"], marker='o', linestyle='-', color='red')
-    ax.set_xlabel("Armature Current (Ia)")
-    ax.set_ylabel("Back EMF (Eb)")
-    ax.grid(True)
-    st.pyplot(fig)
+# ক্যালকুলেশন
+if not edited_df.empty:
+    # Eb = V - Ia*Ra সূত্র প্রয়োগ
+    edited_df["Back_EMF_Eb"] = v_supply - (edited_df["Current_Ia"] * r_armature)
+    
+    # ফলাফল দেখানো
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.write("### ফলাফল টেবিল:")
+        st.dataframe(edited_df)
+    
+    with col2:
+        st.write("### গ্রাফ (Current vs Back EMF):")
+        fig, ax = plt.subplots()
+        ax.plot(edited_df["Current_Ia"], edited_df["Back_EMF_Eb"], marker='o', linestyle='-', color='red', label='Eb')
+        ax.set_xlabel("Armature Current (Ia) in Amps")
+        ax.set_ylabel("Back EMF (Eb) in Volts")
+        ax.grid(True)
+        ax.legend()
+        st.pyplot(fig)
+else:
+    st.warning("টেবিলে অন্তত একটি ডাটা রাখুন।")
+    
